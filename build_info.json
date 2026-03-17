@@ -1,0 +1,17 @@
+{
+  "apps": [
+    {
+      "name": "nosterl",
+      "dir": "",
+      "src_dirs": [
+        "src"
+      ],
+      "extra_src_dirs": [],
+      "include_dirs": [
+        "include"
+      ],
+      "macros": {}
+    }
+  ],
+  "deps": []
+}

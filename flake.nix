@@ -45,6 +45,9 @@
             # GitHub Actions
             programs.actionlint.enable = true;
 
+            # Json
+            programs.jsonfmt.enable = true;
+
             # Markdown
             programs.mdformat.enable = true;
 

@@ -7,3 +7,4 @@ result-*
 *.d
 *.dump
 *.beam
+*.plt

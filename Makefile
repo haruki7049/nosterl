@@ -20,5 +20,11 @@ f: format
 fmt: format
 
 # Dialyzer
-dialyzer:
-	dialyzer --build_plt --apps ./ebin --get_warnings
+PLT = .nosterl_dialyzer.plt
+APPS = erts kernel stdlib eunit compiler crypto syntax_tools parsetools
+
+dialyzer: build $(PLT)
+	dialyzer --plt $(PLT) ./ebin --get_warnings
+
+$(PLT):
+	dialyzer --build_plt --output_plt $(PLT) --apps $(APPS)

@@ -47,6 +47,10 @@
 
             # Markdown
             programs.mdformat.enable = true;
+
+            # ShellScript
+            programs.shellcheck.enable = true;
+            programs.shfmt.enable = true;
           };
 
           devShells.default = pkgs.mkShell {

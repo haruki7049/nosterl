@@ -57,6 +57,7 @@
             nativeBuildInputs = [
               pkgs.beam28Packages.erlang # Erlang VM
               pkgs.nil # Nix LSP
+              pkgs.erlang-language-platform # Erlang LSP
             ];
 
             inputsFrom = [ config.treefmt.build.devShell ];

@@ -32,3 +32,4 @@ $(PLT):
 # eunit
 eunit: build
 	erl -noshell -pa ebin -eval "eunit:test(bech32, [verbose])" -s init stop
+	erl -noshell -pa ebin -eval "eunit:test(segwit, [verbose])" -s init stop

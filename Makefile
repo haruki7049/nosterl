@@ -1,4 +1,4 @@
-all: compile
+all: build
 
 # Build
 build:

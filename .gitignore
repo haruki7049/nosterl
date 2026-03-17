@@ -1,0 +1,9 @@
+# Nix
+/.direnv/
+result*
+result-*
+
+# Erlang
+*.d
+*.dump
+*.beam

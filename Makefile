@@ -28,3 +28,7 @@ dialyzer: build $(PLT)
 
 $(PLT):
 	dialyzer --build_plt --output_plt $(PLT) --apps $(APPS)
+
+# eunit
+eunit: build
+	erl -noshell -pa ebin -eval "eunit:test(bech32, [verbose])" -s init stop

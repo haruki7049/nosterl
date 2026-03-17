@@ -3,7 +3,7 @@
 %%%
 %%% Permission is hereby granted, free of charge, to any person
 %%% obtaining a copy of this software and associated documentation
-%%% files (the “Software”), to deal in the Software without
+%%% files (the "Software"), to deal in the Software without
 %%% restriction, including without limitation the rights to use, copy,
 %%% modify, merge, publish, distribute, sublicense, and/or sell copies
 %%% of the Software, and to permit persons to whom the Software is
@@ -12,7 +12,7 @@
 %%% The above copyright notice and this permission notice shall be
 %%% included in all copies or substantial portions of the Software.
 %%%
-%%% THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND,
+%%% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 %%% EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 %%% MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
 %%% NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
@@ -23,109 +23,76 @@
 %%%
 %%% @author Mathieu Kerjouan aka Niamtokik
 %%% @author Maartz
-%%% @doc
-%%%
-%%% `bech32' module implements bech32 format from bitcoin in pure
-%%% Erlang. One of the goal of this module is to reimplement python <a
-%%% href="https://github.com/sipa/bech32/blob/master/ref/python/segwit_addr.py">`segwit_addr'</a>
-%%% module in Erlang.
-%%%
-%%% == Encoding Usage ==
-%%%
-%%% 4 functions are available to encode data. `encode_bech32/2' and
-%%% `encode_bech32m/2' automatically encode data in the right format
-%%% using indexed data. In case of issue, these functions raise an
-%%% exception. `encode/2' and `encode/3' can accept many options and
-%%% will use ok/error patterns. Here some example:
-%%%
-%%% ```
-%%% % Define an HRP
-%%% HRP = "test".
-%%%
-%%% % Define an indexed string using base32. This data can be
-%%% % generated using convertbits function.
-%%% IndexedData = [0,1,2,3,4].
-%%%
-%%% % Define an unindexed string (a raw one)
-%%% UnindexedData = [$n,$o,$s,$t,$r].
-%%% UnindexedData = "nostr".
-%%%
-%%% % bech32 encoding using bech32 format with indexed string.
-%%% "test1qpzryyr0hjg"
-%%%     = bech32:encode_bech32(HRP, IndexedData).
-%%% {ok, "test1qpzryyr0hjg"}
-%%%     = bech32:encode(HRP, IndexedData, [{format, bech32}]}).
-%%%
-%%% % bech32 encoding using bech32m format with indexed string.
-%%% "test1qpzry3llmh2" = bech32:encode_bech32m(HRP, IndexedData).
-%%% {ok, "test1qqqsyqcyzsv7qk"}
-%%%    = bech32:encode(HRP, IndexedData, [{format, bech32m}]}).
-%%%
-%%% % bech32 encoding using unindexed data
-%%% {ok, "test1dehhxarjyzxdzp"}
-%%%    = bech32:encode(HRP, UnindexedData, [{format, bech32}, {indexed, false}]).
-%%%
-%%% % bech32 encoding using binary or bitstring as input
-%%% "test1qqqsyqcyzsv7qk"
-%%%    = bech32:encode(<<"test">>, <<0,1,2,3,4>>, [{format, bech32m}]).
-%%% {ok,"test1qpzry3llmh2"}
-%%%    = bech32:encode(<<"test">>, <<0,1,2,3,4>>, [{format, bech32m}]).
-%%%
-%%% % bech32 encoding with binary output
-%%% {ok, "test1qpzry3llmh2"}
-%%%    = bech32:encode(HRP, IndexedData, [{format, bech32m}, {as_binary, true}]).
-%%% '''
-%%%
-%%% == Decoding Usage ==
-%%%
-%%% Only one function is available to decode bech32 string:
-%%% `decode/1'. Here few example.
-%%%
-%%% ```
-%%% % decode a string as list()
-%%% {ok, #{ checksum => [26,30,20,18,15,4]
-%%%       , data     => [31,28]
-%%%       , format   => bech32m
-%%%       , hrp      => "test"
-%%%       , origin   => "test1lu675j0y"
-%%%       }
-%%% } = bech32:decode("test1lu675j0y").
-%%%
-%%% % decode a string as binary()
-%%% {ok, #{ checksum => [26,30,20,18,15,4]
-%%%       , data     => [31,28]
-%%%       , format   => bech32m
-%%%       , hrp      => "test"
-%%%       , origin   => "test1lu675j0y"
-%%%       }
-%%% } = bech32:decode(<<"test1lu675j0y">>)
-%%% '''
-%%%
-%%% == Convert bits ==
-%%%
-%%% Functions to convert bits from different base called
-%%% `convertbits/3' and `convertbits/4' are also provided.
-%%%
-%%% ```
-%%% {ok,[14,17,18,23,6,29,0]}
-%%%    = bech32:convertbits("test", 8, 5).
-%%%
-%%% {ok, [116,101,115,116,0]}
-%%%    = bech32:convertbits([14,17,18,23,6,29,0], 5, 8).
-%%%
-%%% {ok,[14,17,18,23,6,29]}
-%%%    = bech32:convertbits("test", 8, 5, [{padding, false}]).
-%%%
-%%% {ok,"test"}
-%%%    = bech32:convertbits([14,17,18,23,6,29], 5, 8, [{padding, true}]).
-%%% '''
-%%%
-%%% @todo add debug mode
-%%% @todo creates errors (and specifies them)
-%%% @todo creates types and specification.
-%%% @end
 %%%===================================================================
 -module(bech32).
+-moduledoc """
+`bech32` module implements the bech32 encoding format from Bitcoin in pure
+Erlang. One goal of this module is to reimplement the Python
+[segwit_addr](https://github.com/sipa/bech32/blob/master/ref/python/segwit_addr.py)
+module in Erlang.
+
+## Encoding
+
+4 functions are available to encode data. `encode_bech32/2` and
+`encode_bech32m/2` automatically encode data in the right format using
+indexed data. In case of an issue, these functions raise an exception.
+`encode/2` and `encode/3` accept many options and use ok/error patterns.
+
+```erlang
+HRP           = "test".
+IndexedData   = [0,1,2,3,4].
+UnindexedData = "nostr".
+
+% Encoding with bech32 format (indexed input).
+"test1qpzryyr0hjg"       = bech32:encode_bech32(HRP, IndexedData).
+{ok, "test1qpzryyr0hjg"} = bech32:encode(HRP, IndexedData, [{format, bech32}]).
+
+% Encoding with bech32m format (indexed input).
+"test1qpzry3llmh2"          = bech32:encode_bech32m(HRP, IndexedData).
+{ok, "test1qqqsyqcyzsv7qk"} = bech32:encode(HRP, IndexedData, [{format, bech32m}]).
+
+% Encoding with unindexed input.
+{ok, "test1dehhxarjyzxdzp"} =
+    bech32:encode(HRP, UnindexedData, [{format, bech32}, {indexed, false}]).
+
+% Encoding with binary input.
+{ok, "test1qpzry3llmh2"} =
+    bech32:encode(<<"test">>, <<0,1,2,3,4>>, [{format, bech32m}]).
+
+% Encoding with binary output.
+{ok, <<"test1qpzry3llmh2">>} =
+    bech32:encode(HRP, IndexedData, [{format, bech32m}, {binary, true}]).
+```
+
+## Decoding
+
+Use `decode/1` or `decode/2` to decode a bech32-encoded string.
+
+```erlang
+{ok, #{checksum => [26,30,20,18,15,4],
+       data     => [31,28],
+       format   => bech32m,
+       hrp      => "test",
+       origin   => "test1lu675j0y"
+      }} = bech32:decode("test1lu675j0y").
+```
+
+## Bit Conversion
+
+`convertbits/3` and `convertbits/4` convert data between power-of-2 bases.
+
+```erlang
+{ok,[14,17,18,23,6,29,0]} = bech32:convertbits("test", 8, 5).
+{ok,[14,17,18,23,6,29]}   = bech32:convertbits("test", 8, 5, [{padding, false}]).
+{ok,"test"}               = bech32:convertbits([14,17,18,23,6,29], 5, 8, [{padding, true}]).
+```
+
+## TODO
+
+- Add debug mode
+- Create and specify error types
+- Create types and specifications
+""".
 -export([encode/2, encode/3]).
 -export([encode_bech32/2, encode_bech32m/2]).
 -export([decode/1, decode/2]).
@@ -233,20 +200,14 @@
 -spec test() -> any().
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. Convert an index into a chart present in charset.
+%% Internal. Converts an index into the corresponding charset character.
 %%
-%% ```
-%% % generate with:
-%% Index = lists:seq(0,31),
-%% Charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l",
-%% [ io:format("charset(~p) -> $~c;~n", [I, L])
-%%   || {I, L} <- lists:zip(Index, Charset)
-%% ].
-%% '''
-%%
-%% @end
+%% Generated with:
+%%   Index   = lists:seq(0,31),
+%%   Charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l",
+%%   [{I, L} || {I, L} <- lists:zip(Index, Charset)].
 %%--------------------------------------------------------------------
+-doc false.
 -spec index_to_charset(Index) -> Char
               when Index :: charset_index(),
                    Char :: charset().
@@ -286,10 +247,9 @@ index_to_charset(31) -> $l.
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. convert charset value to index.
-%% @end
+%% Internal. Converts a charset character back to its index.
 %%--------------------------------------------------------------------
+-doc false.
 -spec charset_to_index(Char) -> Index
               when Char :: charset(),
                    Index :: charset_index().
@@ -329,10 +289,9 @@ charset_to_index($l) -> 31.
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. check if a character is present in charset or not.
-%% @end
+%% Internal. Returns true if the character belongs to the bech32 charset.
 %%--------------------------------------------------------------------
+-doc false.
 -spec is_charset(Char) -> Return
               when Char :: charset(),
                    Return :: boolean().
@@ -373,29 +332,26 @@ is_charset(_) -> false.
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. check if a string is indexed or not.
-%% @end
+%% Internal. Returns true if the value is a valid base32 index (0..31).
 %%--------------------------------------------------------------------
+-doc false.
 is_index(C) when C >= 0 andalso C < 32 -> true;
 is_index(_) -> false.
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. check if its' a valid bech32 string.
-%% @end
+%% Internal. Validates that all elements in a list are valid base32 indices.
 %%--------------------------------------------------------------------
+-doc false.
 valid_indexed_string(List)
   when is_list(List) ->
     valid_indexed_list(List, [], 0).
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc
-%% @end
+%% Internal. Accumulator loop for valid_indexed_string/1.
 %%--------------------------------------------------------------------
+-doc false.
 valid_indexed_list([], Buffer, _Position) ->
     {ok, lists:reverse(Buffer)};
 valid_indexed_list([H | T], Buffer, Position) ->
@@ -411,10 +367,9 @@ valid_indexed_list([H | T], Buffer, Position) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. check bech32 data strings.
-%% @end
+%% Internal. Validates that all characters in a string belong to the bech32 charset.
 %%--------------------------------------------------------------------
+-doc false.
 -spec valid_string(String) -> Return
               when String :: [integer()] | iodata(),
                    Return :: {ok, [integer()] | iodata()} | {error, Reason},
@@ -432,10 +387,9 @@ valid_string(_) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Accumulator loop for valid_string/1.
 %%--------------------------------------------------------------------
+-doc false.
 valid_charset_list([], Buffer, _Position) ->
     {ok, lists:reverse(Buffer)};
 valid_charset_list([H | T], Buffer, Position) ->
@@ -450,7 +404,7 @@ valid_charset_list([H | T], Buffer, Position) ->
     end.
 
 
-% @hidden
+-doc false.
 -spec valid_string_test() -> any().
 valid_string_test() ->
     [?assertEqual({ok, "a"},
@@ -466,10 +420,9 @@ valid_string_test() ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. generate bech32 polymod.
-%% @end
+%% Internal. Computes the bech32 polymod checksum over a list of values.
 %%--------------------------------------------------------------------
+-doc false.
 -spec polymod(Values) -> Return
               when Values :: string() | binary(),
                    Return :: pos_integer().
@@ -483,7 +436,7 @@ polymod(String)
     polymod_loop(String, 1).
 
 
-% @hidden
+-doc false.
 -spec polymod_test() -> any().
 polymod_test() ->
     [?assertEqual(1, polymod(<<>>)),
@@ -499,10 +452,9 @@ polymod_test() ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. main polymod loop.
-%% @end
+%% Internal. Main accumulator loop for polymod/1.
 %%--------------------------------------------------------------------
+-doc false.
 -spec polymod_loop(String, Checksum) -> Return
               when String :: [pos_integer()],
                    Checksum :: pos_integer(),
@@ -519,10 +471,9 @@ polymod_loop([Head | Tail], Checksum) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. generate bech32 polymod using POLYMOD_GENERATOR macro.
-%% @end
+%% Internal. Single generator step for polymod, expanded via POLYMOD_GENERATOR macro.
 %%--------------------------------------------------------------------
+-doc false.
 -spec polymod_generator(Index, Checksum, Top) -> Return
               when Index :: 0 | 1 | 2 | 3 | 4 | 5,
                    Checksum :: pos_integer(),
@@ -538,10 +489,9 @@ polymod_generator(5, Checksum, _Top) -> Checksum.
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. generate hrp expansion.
-%% @end
+%% Internal. Expands an HRP string for use in the polymod checksum.
 %%--------------------------------------------------------------------
+-doc false.
 -spec hrp_expand(HRP) -> Return
               when HRP :: hrp(),
                    Return :: hrp().
@@ -553,7 +503,7 @@ hrp_expand(HRP)
     Head ++ [0] ++ Tail.
 
 
-% @hidden
+-doc false.
 -spec hrp_expand_test() -> any().
 hrp_expand_test() ->
     [?assertEqual([0], hrp_expand([])),
@@ -561,11 +511,9 @@ hrp_expand_test() ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% verify bech32 checksum from data.
-%% @end
+%% Internal. Verifies the bech32 checksum and returns the format atom.
 %%--------------------------------------------------------------------
+-doc false.
 -spec verify_checksum(HRP, Data) -> Return
               when HRP :: hrp(),
                    Data :: data(),
@@ -582,11 +530,9 @@ verify_checksum(HRP, Data) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% create a new bech32 checksum.
-%% @end
+%% Internal. Creates a new bech32 checksum for the given HRP and data.
 %%--------------------------------------------------------------------
+-doc false.
 -spec create_checksum(HRP, Data, Opts) -> Return
               when HRP :: hrp(),
                    Data :: data(),
@@ -607,17 +553,16 @@ create_checksum(HRP, Data, Opts)
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Finalizes checksum computation by XOR-ing with the format constant.
 %%--------------------------------------------------------------------
+-doc false.
 create_checksum_final(Polymod, Const) ->
     Polymod2 = Polymod bxor Const,
     Ret = fun(P, I) -> (P bsr 5 * (5 - I)) band 31 end,
     [ Ret(Polymod2, Index) || Index <- lists:seq(0, 5) ].
 
 
-% @hidden
+-doc false.
 -spec create_checksum_test() -> any().
 create_checksum_test() ->
     [?assertEqual([2, 13, 27, 24, 0, 28],
@@ -630,11 +575,7 @@ create_checksum_test() ->
 
 
 %%--------------------------------------------------------------------
-%% @doc `encode_bech32/2' function encodes indexed data with padding
-%% using bech32 format.
-%% @see encode/3
-%% @end
-%%--------------------------------------------------------------------
+-doc "Encodes indexed data using bech32 format. Raises an exception on error. See `encode/3`.".
 -spec encode_bech32(HRP, Data) -> Return
               when HRP :: [integer()],
                    Data :: [integer()],
@@ -649,11 +590,7 @@ encode_bech32(HRP, Data) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc `encode_bech32m/2' function encodes indexed data with padding
-%% using to bech32m format.
-%% @see encode/3
-%% @end
-%%--------------------------------------------------------------------
+-doc "Encodes indexed data using bech32m format. Raises an exception on error. See `encode/3`.".
 -spec encode_bech32m(HRP, Data) -> Return
               when HRP :: [integer()],
                    Data :: [integer()],
@@ -668,12 +605,7 @@ encode_bech32m(HRP, Data) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc `encode/2' function encodes indexed data with padding using
-%% bech32 format.
-%% @see encode_bech32/2
-%% @see encode/3
-%% @end
-%%--------------------------------------------------------------------
+-doc "Encodes indexed data with padding using bech32 format. See `encode_bech32/2` and `encode/3`.".
 -spec encode(HRP, Data) -> Return
               when HRP :: [integer()],
                    Data :: [integer()],
@@ -684,11 +616,7 @@ encode(HRP, Data) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc `encode/3' function is used to encode indexed or unindexed
-%% data in bech32 or bech32m format. It supports `list()' or
-%% `binary()' types in input and few options.
-%% @end
-%%--------------------------------------------------------------------
+-doc "Encodes indexed or unindexed data in bech32 or bech32m format. Accepts `list()` or `binary()` input and a proplist of options.".
 -spec encode(HRP, Data, Opts) -> Return
               when HRP :: [integer()],
                    Data :: [integer()],
@@ -709,10 +637,9 @@ encode(HRP, Data, Opts) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Validates the format option before encoding.
 %%--------------------------------------------------------------------
+-doc false.
 encode_check_format(HRP, Data, Opts) ->
     case proplists:get_value(format, Opts) of
         bech32 -> encode_check_data(HRP, Data, Opts);
@@ -722,10 +649,9 @@ encode_check_format(HRP, Data, Opts) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Validates and converts data before encoding.
 %%--------------------------------------------------------------------
+-doc false.
 encode_check_data(HRP, Data, Opts) ->
     Indexed = proplists:get_value(indexed, Opts, true),
     case valid_indexed_string(Data) of
@@ -741,10 +667,9 @@ encode_check_data(HRP, Data, Opts) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Produces the final encoded string or binary.
 %%--------------------------------------------------------------------
+-doc false.
 encode_final(HRP, Data, Checksum, Opts) ->
     Binary = proplists:get_value(binary, Opts, false),
     Combined = Data ++ Checksum,
@@ -756,7 +681,7 @@ encode_final(HRP, Data, Checksum, Opts) ->
     {ok, Final}.
 
 
-% @hidden
+-doc false.
 -spec encode_test() -> any().
 encode_test() ->
     [  % encode/3
@@ -797,10 +722,7 @@ encode_test() ->
 
 
 %%--------------------------------------------------------------------
-%% @doc`decode/1' function decodes bech32 encoded data.
-%% @see decode/2
-%% @end
-%%--------------------------------------------------------------------
+-doc "Decodes a bech32-encoded string. See `decode/2`.".
 -spec decode(Bech) -> Return
               when Bech :: list(),
                    Return :: {ok, map()} | {error, Reason},
@@ -811,60 +733,39 @@ decode(Bech) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc `decode/2' function decodes bech32 encoded data.
-%%
-%% == Examples ==
-%%
-%% This is the default behavior, it will output the raw value from
-%% base 32 (2^5):
-%%
-%% ```
-%% {ok, #{ checksum => [4,18,23,26,14,26]
-%%       , data => [7,15,24,12,12,15,30,11,18,13,3,3,8,1,29,15,18,30,18,30,11,27|...]
-%%       , format => bech32
-%%       , hrp => "npub"
-%%       , origin => "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
-%%       }
-%% } = decode("npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6").
-%% '''
-%%
-%% One can change this behavior by using a custom base using the
-%% converter option and `{base, Base}'where `Base' is a strictly
-%% positive integer representing a base 2.
-%%
-%% ```
-%% Address = "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6".
-%% {ok, #{ checksum => [4,18,23,26,14,26]
-%%       , data => [59,240,198,63,203,147,70,52,7,175,151,165,229,238,100,250|...]
-%%       , format => bech32
-%%       , hrp => "npub"
-%%       , origin => "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
-%%       }
-%% } = bech32:decode(Address, [{converter, {base, 8}}]).
-%% '''
-%%
-%% One can also create a lambda function to deal with the output and
-%% converted the final data in another customer format.
-%%
-%% ```
-%% % create a new lambda function
-%% Converter = fun(Data) ->
-%%   Binary = erlang:list_to_binary(Data),
-%%   Hex = binary:encode_hex(Binary),
-%%   {ok, Hex}
-%% end.
-%%
-%% {ok, #{ checksum => [4,18,23,26,14,26]
-%%       , data => <<"3BF0C63FCB93463407AF97A5E5EE64FA883D107EF9E558472C4EB9AAAEFA459D00">>
-%%       , format => bech32
-%%       , hrp => "npub"
-%%       , origin => "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
-%%       }
-%% } = bech32:decode(Address, [{converter, Converter}])
-%% '''
-%%
-%% @end
-%%--------------------------------------------------------------------
+-doc """
+Decodes a bech32-encoded string with optional output conversion.
+
+By default the raw base-32 (2^5) data is returned:
+
+```erlang
+{ok, #{checksum => [4,18,23,26,14,26],
+       data     => [7,15,24,12,...],
+       format   => bech32,
+       hrp      => "npub",
+       origin   => "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6"
+      }} = decode("npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6").
+```
+
+A different output base can be requested with `{converter, {base, B}}`:
+
+```erlang
+Address = "npub180cvv07tjdrrgpa0j7j7tmnyl2yr6yr7l8j4s3evf6u64th6gkwsyjh6w6".
+{ok, #{data => [59,240,198,...], ...}} =
+    bech32:decode(Address, [{converter, {base, 8}}]).
+```
+
+A custom lambda can also be supplied as the converter:
+
+```erlang
+Converter = fun(Data) ->
+    Binary = erlang:list_to_binary(Data),
+    {ok, binary:encode_hex(Binary)}
+end,
+{ok, #{data => <<"3BF0C6...">>, ...}} =
+    bech32:decode(Address, [{converter, Converter}]).
+```
+""".
 -spec decode(Bech, Opts) -> Return
               when Bech :: list(),
                    Opts :: [Option, ...],
@@ -887,10 +788,9 @@ decode(Bech, Opts) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Step 1: validates characters in the bech32 string.
 %%--------------------------------------------------------------------
+-doc false.
 decode_check1(Bech, State, Opts) ->
     case decode_check_characters(Bech) of
         {ok, _} -> decode_check2(Bech, State, Opts);
@@ -899,10 +799,9 @@ decode_check1(Bech, State, Opts) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Step 2: enforces uniform case (all-lower or all-upper).
 %%--------------------------------------------------------------------
+-doc false.
 decode_check2(Bech, State, Opts) ->
     Lower = string:lowercase(Bech),
     Upper = string:uppercase(Bech),
@@ -913,16 +812,15 @@ decode_check2(Bech, State, Opts) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Splits the string at the last '1' separator.
 %%--------------------------------------------------------------------
+-doc false.
 decode_split(Bech, #bech32{} = State, Opts) ->
     Reverse = lists:reverse(Bech),
     decode_split(Bech, Reverse, [], 1, State, Opts).
 
 
-% @hidden
+% Internal accumulator clause for decode_split/6.
 decode_split(_Bech, [], _Data, _Position, _State, _Opts) ->
     {error, [{reason, "No separator character"}]};
 decode_split(_Bech, [$1], _Data, _Position, _State, _Opts) ->
@@ -945,10 +843,9 @@ decode_split(Bech, [Head | Tail], Buffer, Position, State, Opts) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Separates data and checksum from the raw data portion.
 %%--------------------------------------------------------------------
+-doc false.
 decode_data(Bech, RawData, State, Opts) ->
     case decode_data2(RawData, [], 1) of
         {ok, Data, Checksum} ->
@@ -959,10 +856,9 @@ decode_data(Bech, RawData, State, Opts) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @end
+%% Internal. Verifies the checksum and records the format.
 %%--------------------------------------------------------------------
+-doc false.
 decode_checksum(Bech, Checksum, #bech32{data = Data, hrp = HRP} = State, Opts) ->
     case decode_format(HRP, Data ++ Checksum) of
         {ok, Format} ->
@@ -973,13 +869,12 @@ decode_checksum(Bech, Checksum, #bech32{data = Data, hrp = HRP} = State, Opts) -
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal.
-%% @todo cleanup this function. It has been created to help to convert
-%%       data in another base than base32 using a power of 2 or custom
-%%       function.
-%% @end
+%% Internal. Applies the optional converter to the decoded data.
+%% TODO: Simplify this function. It was added to support converting
+%%       data to bases other than base-32 via a power-of-2 value or a
+%%       custom function.
 %%--------------------------------------------------------------------
+-doc false.
 decode_output(_Bech, _Checksum, #bech32{data = Data} = State, Opts) ->
     BaseOutput = proplists:get_value(converter, Opts, {base, 5}),
     case BaseOutput of
@@ -1004,7 +899,7 @@ decode_output(_Bech, _Checksum, #bech32{data = Data} = State, Opts) ->
     end.
 
 
-% @hidden
+-doc false.
 -spec decode_test() -> any().
 decode_test() ->
     [
@@ -1241,15 +1136,14 @@ decode_test() ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. check if each characters are correct and valid.
-%% @end
+%% Internal. Validates that all characters are within the printable ASCII range.
 %%--------------------------------------------------------------------
+-doc false.
 decode_check_characters(Bech) ->
     decode_check_characters(Bech, [], 1).
 
 
-% @hidden
+% Internal accumulator clause for decode_check_characters/1.
 decode_check_characters([], Buffer, _) ->
     {ok, lists:reverse(Buffer)};
 decode_check_characters([Head | _Tail], _Buffer, Position)
@@ -1261,10 +1155,9 @@ decode_check_characters([Head | Tail], Buffer, Position) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. decode the data and checksum part.
-%% @end
+%% Internal. Splits raw charset data into indexed data and checksum.
 %%--------------------------------------------------------------------
+-doc false.
 decode_data2([], [C0, C1, C2, C3, C4, C5 | RawData], _Position) ->
     RawChecksum = [C0, C1, C2, C3, C4, C5],
     Checksum = [ charset_to_index(Char) || Char <- lists:reverse(RawChecksum) ],
@@ -1280,10 +1173,9 @@ decode_data2([Head | Tail], Buffer, Position) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. decode the format using the checksum.
-%% @end
+%% Internal. Determines the encoding format by verifying the checksum.
 %%--------------------------------------------------------------------
+-doc false.
 decode_format(HRP, Data) ->
     case verify_checksum(HRP, Data) of
         bech32 -> {ok, bech32};
@@ -1293,11 +1185,7 @@ decode_format(HRP, Data) ->
 
 
 %%--------------------------------------------------------------------
-%% @doc `convertbits/3' function implements a power of 2 base
-%% conversion with padding support.
-%% @see convertbits/4
-%% @end
-%%--------------------------------------------------------------------
+-doc "Converts data between power-of-2 bases with padding enabled by default. See `convertbits/4`.".
 -spec convertbits(Data, From, To) -> Return
               when Data :: list() | binary(),
                    From :: integer(),
@@ -1309,7 +1197,7 @@ convertbits(Data, From, To) ->
     convertbits(Data, From, To, []).
 
 
-% @hidden
+-doc false.
 -spec convertbits_test() -> any().
 convertbits_test() ->
     [?assertEqual({ok, [0, 4, 1, 0, 6, 1, 0, 5]},
@@ -1333,10 +1221,7 @@ convertbits_test() ->
 
 
 %%--------------------------------------------------------------------
-%% @doc `convertbits/4' function implements a power of 2 base
-%% conversion with or without padding support.
-%% @end
-%%--------------------------------------------------------------------
+-doc "Converts data between power-of-2 bases. The `{padding, boolean()}` option controls zero-padding of the final bits.".
 -spec convertbits(Data, From, To, Opts) -> Return
               when Data :: list() | binary(),
                    From :: integer(),
@@ -1365,10 +1250,9 @@ convertbits(Data, From, To, Opts) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. main convertbits loop.
-%% @end
+%% Internal. Main loop for convertbits: processes each value and collects output bits.
 %%--------------------------------------------------------------------
+-doc false.
 convertbits1([], _From, To, #{max_value := Maxv, accumulator := Acc, bits := Bits, ret := Ret, padding := true})
   when Bits > 0 ->
     {ok, lists:reverse([(Acc bsl (To - Bits)) band Maxv | Ret])};
@@ -1393,10 +1277,9 @@ convertbits1([Value | _] = Data, From, To, #{max_accumulator := Maxa, accumulato
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. bits conversion.
-%% @end
+%% Internal. Drains accumulated bits into output words when enough bits are available.
 %%--------------------------------------------------------------------
+-doc false.
 convertbits2(Data, From, To, #{bits := Bits, ret := Ret, accumulator := Acc, max_value := Maxv} = State)
   when Bits >= To ->
     Bits2 = Bits - To,
@@ -1408,10 +1291,9 @@ convertbits2([_ | Tail], From, To, #{position := Position} = State) ->
 
 
 %%--------------------------------------------------------------------
-%% @hidden
-%% @doc internal. used to convert bech32 record.
-%% @end
+%% Internal. Converts a #bech32{} record to a plain map.
 %%--------------------------------------------------------------------
+-doc false.
 -spec to_map(Record) -> Return
               when Record :: #bech32{},
                    Return :: map().

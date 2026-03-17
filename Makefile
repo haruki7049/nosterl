@@ -18,3 +18,7 @@ format:
 
 f: format
 fmt: format
+
+# Dialyzer
+dialyzer:
+	dialyzer --build_plt --apps ./ebin --get_warnings
